@@ -171,8 +171,8 @@
                 <label class="block font-medium text-sky-800 mb-1">Unit</label>
                 <select id="item-unit"
                         class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                  <option value="set">Set</option>
                   <option value="pcs">Pcs</option>
-                  <option value="pcs">Set</option>
                   <option value="kg">Kg</option>
                   <option value="meter">Meter</option>
                   <option value="box">Box</option>
@@ -933,17 +933,30 @@
 
     // SALES VIEW
     const salesMap = {};
+    let totalSalesAmount = 0;
+    
     filtered.forEach(m=>{
-      if(!salesMap[m.itemId]) salesMap[m.itemId]={qty:0,lines:0,last:null};
+      const item = items.find(i=>i.id===m.itemId);
+      const price = item ? Number(item.price) || 0 : 0;
+      const amount = Number(m.qty) * price;
+      
+      if(!salesMap[m.itemId]) salesMap[m.itemId]={qty:0,lines:0,last:null,amount:0};
       const s=salesMap[m.itemId];
-      s.qty+=Number(m.qty); s.lines++; if(!s.last || new Date(m.date)>new Date(s.last)) s.last=m.date;
+      s.qty+=Number(m.qty); 
+      s.amount+=amount;
+      s.lines++; 
+      if(!s.last || new Date(m.date)>new Date(s.last)) s.last=m.date;
+      
+      totalSalesAmount += amount;
     });
+    
     const labels = []; const qtyData=[];
     Object.keys(salesMap).forEach(id=>{
       const item = items.find(i=>i.id===id);
       labels.push(item?item.name:"Item");
       qtyData.push(salesMap[id].qty);
     });
+    
     const totalQty=qtyData.reduce((a,b)=>a+b,0);
     const totalLines=filtered.length;
     const avg=totalLines?totalQty/totalLines:0;
@@ -953,8 +966,8 @@
     renderReportSummary([
       {label:"Total Qty Sold",value:totalQty.toFixed(2),note:"Units issued (OUT).",bg:"bg-emerald-50 border-emerald-100",
        labelColor:"text-emerald-600",valueColor:"text-emerald-700",noteColor:"text-emerald-500",icon:"Q",iconBg:"bg-emerald-500/10 text-emerald-700"},
-      {label:"Sales Lines",value:totalLines,note:"Number of OUT lines.",bg:"bg-sky-50 border-sky-100",
-       labelColor:"text-sky-600",valueColor:"text-sky-800",noteColor:"text-sky-500",icon:"#",iconBg:"bg-sky-500/10 text-sky-700"},
+      {label:"Total Sales Amt",value:"₹ " + totalSalesAmount.toFixed(2),note:"Calculated based on price.",bg:"bg-sky-50 border-sky-100",
+       labelColor:"text-sky-600",valueColor:"text-sky-800",noteColor:"text-sky-500",icon:"₹",iconBg:"bg-sky-500/10 text-sky-700"},
       {label:"Top Item (Qty)",value:topItem?topItem.name:"-",note:`${topQty.toFixed(2)} ${topItem?topItem.unit:""}`,bg:"bg-amber-50 border-amber-100",
        labelColor:"text-amber-600",valueColor:"text-amber-700",noteColor:"text-amber-600",icon:"★",iconBg:"bg-amber-500/10 text-amber-700"},
       {label:"Avg Qty / Line",value:avg.toFixed(2),note:"Per sales line.",bg:"bg-indigo-50 border-indigo-100",
@@ -979,10 +992,9 @@
         <tr>
           <th class="px-2 py-1 text-left">Item</th>
           <th class="px-2 py-1 text-right">Qty Sold</th>
-          <th class="px-2 py-1 text-right">Lines</th>
+          <th class="px-2 py-1 text-right">Sales Amt (₹)</th>
           <th class="px-2 py-1 text-right">Avg/Line</th>
           <th class="px-2 py-1 text-left">Last Sale</th>
-          <th class="px-2 py-1 text-right">Current Stock</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-sky-100 bg-sky-50"></tbody>`;
@@ -995,10 +1007,9 @@
       tr.innerHTML=`
         <td class="px-2 py-1">${item?item.name:"-"}</td>
         <td class="px-2 py-1 text-right">${d.qty.toFixed(2)}</td>
-        <td class="px-2 py-1 text-right">${d.lines}</td>
+        <td class="px-2 py-1 text-right font-semibold">₹ ${d.amount.toFixed(2)}</td>
         <td class="px-2 py-1 text-right">${avgPer.toFixed(2)}</td>
-        <td class="px-2 py-1 text-[11px] text-sky-500">${d.last?formatDate(d.last):"-"}</td>
-        <td class="px-2 py-1 text-right">${item?Number(item.stock||0).toFixed(2):"-"}</td>`;
+        <td class="px-2 py-1 text-[11px] text-sky-500">${d.last?formatDate(d.last):"-"}</td>`;
       sb.appendChild(tr);
     });
 
@@ -1013,18 +1024,22 @@
         <tr>
           <th class="px-2 py-1 text-left">Date</th>
           <th class="px-2 py-1 text-left">Item</th>
-          <th class="px-2 py-1 text-right">Qty Sold</th>
+          <th class="px-2 py-1 text-right">Qty</th>
+          <th class="px-2 py-1 text-right">Amount (₹)</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-sky-100 bg-sky-50"></tbody>`;
     const db=detailTbl.querySelector("tbody");
     filtered.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(m=>{
       const item = items.find(i=>i.id===m.itemId);
+      const price = item ? Number(item.price) || 0 : 0;
+      const amount = Number(m.qty) * price;
       const tr=document.createElement("tr");
       tr.innerHTML=`
         <td class="px-2 py-1">${formatDate(m.date)}</td>
         <td class="px-2 py-1">${item?item.name:"-"}</td>
-        <td class="px-2 py-1 text-right">${Number(m.qty).toFixed(2)}</td>`;
+        <td class="px-2 py-1 text-right">${Number(m.qty).toFixed(2)}</td>
+        <td class="px-2 py-1 text-right">₹ ${amount.toFixed(2)}</td>`;
       db.appendChild(tr);
     });
 
