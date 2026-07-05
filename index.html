@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inventory Management Dashboard</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- PRINT ONLY REPORT CSS -->
+  <style>
+    @media print {
+      body {
+        background: #ffffff !important;
+      }
+      /* Hide everything by default */
+      body * {
+        visibility: hidden;
+      }
+      /* Show only the report wrapper */
+      #report-wrapper, #report-wrapper * {
+        visibility: visible;
+      }
+      /* Make report full page */
+      #report-wrapper {
+        position: absolute;
+        inset: 0;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-sky-50 via-purple-50 to-emerald-50 text-slate-800">
+<div class="min-h-screen flex">
+  <!-- SIDEBAR -->
+  <aside class="w-64 bg-gradient-to-b from-sky-700 via-indigo-600 to-cyan-600 text-slate-50 shadow-xl flex flex-col">
+    <div class="px-5 pt-6 pb-4 flex items-center gap-3 border-b border-sky-400/40">
+      <div class="h-10 w-10 rounded-2xl bg-sky-900/40 flex items-center justify-center text-xl font-bold">
+        IM
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-[0.2em] text-sky-100/90">Inventory</div>
+        <div class="text-sm font-semibold">Management</div>
+      </div>
+    </div>
+
+    <div class="px-5 pt-4 pb-2 text-xs text-sky-100/80">
+      Welcome, <span class="font-semibold">Nirmal</span>
+    </div>
+
+    <nav class="px-3 py-2 text-sm space-y-1">
+      <button id="tab-items"
+              class="tab-btn w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left bg-sky-100 text-sky-900 shadow-sm">
+        <span class="h-2 w-2 rounded-full bg-emerald-400"></span> Items
+      </button>
+      <button id="tab-movements"
+              class="tab-btn w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-sky-50/90 hover:bg-sky-800/80">
+        <span class="h-2 w-2 rounded-full bg-amber-200"></span> Stock Movements
+      </button>
+      <button id="tab-reports"
+              class="tab-btn w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-sky-50/90 hover:bg-sky-800/80">
+        <span class="h-2 w-2 rounded-full bg-pink-200"></span> Reports
+      </button>
+    </nav>
+
+    <div class="mt-auto px-5 pb-5 pt-3 text-[11px] text-sky-100/80 border-t border-sky-400/40">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="h-8 w-8 rounded-full bg-sky-900/50 flex items-center justify-center text-xs">AD</div>
+        <div>
+          <div class="font-medium">Admin</div>
+          <div class="text-sky-100/70 text-[10px]">Local storage only</div>
+        </div>
+      </div>
+      <div>Today: <span id="today-label"></span></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 flex flex-col min-h-screen">
+    <!-- HEADER -->
+    <header class="px-8 py-4 flex items-center justify-between bg-white/70 backdrop-blur border-b border-sky-100">
+      <div>
+        <h1 class="text-2xl font-semibold bg-gradient-to-r from-sky-700 via-indigo-600 to-emerald-600 bg-clip-text text-transparent">
+          Inventory Management
+        </h1>
+        <p class="text-xs text-sky-600 mt-1">Colourful dashboard · Daily / Monthly stock & sales reports</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2 bg-white border border-sky-200 rounded-full px-3 py-1.5 text-xs shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/>
+          </svg>
+          <input placeholder="Quick search items…" class="bg-transparent outline-none text-xs w-40" />
+        </div>
+        <div class="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-lime-400 text-emerald-900 text-xs font-medium shadow-sm">
+          Live stock
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="flex-1 overflow-y-auto p-6">
+      <div class="max-w-6xl mx-auto space-y-6">
+        <!-- KPIs -->
+        <section class="grid md:grid-cols-4 gap-4">
+          <div class="bg-gradient-to-br from-sky-100 via-sky-50 to-white rounded-2xl shadow-md border border-sky-100 p-4">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs text-sky-600 font-medium">Total Products</span>
+              <span class="h-7 w-7 rounded-full bg-sky-500/10 text-sky-700 flex items-center justify-center text-[11px]">P</span>
+            </div>
+            <div id="kpi-items" class="text-2xl font-semibold text-sky-800">0</div>
+          </div>
+          <div class="bg-gradient-to-br from-emerald-100 via-emerald-50 to-white rounded-2xl shadow-md border border-emerald-100 p-4">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs text-emerald-700 font-medium">Total Stock</span>
+              <span class="h-7 w-7 rounded-full bg-emerald-500/10 text-emerald-700 flex items-center justify-center text-[11px]">S</span>
+            </div>
+            <div id="kpi-stock" class="text-2xl font-semibold text-emerald-700">0</div>
+          </div>
+          <div class="bg-gradient-to-br from-amber-100 via-amber-50 to-white rounded-2xl shadow-md border border-amber-100 p-4">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs text-amber-700 font-medium">Today Movements</span>
+              <span class="h-7 w-7 rounded-full bg-amber-500/10 text-amber-700 flex items-center justify-center text-[11px]">T</span>
+            </div>
+            <div id="kpi-movements" class="text-2xl font-semibold text-amber-600">0</div>
+          </div>
+          <div class="bg-gradient-to-br from-rose-100 via-rose-50 to-white rounded-2xl shadow-md border border-rose-100 p-4">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs text-rose-700 font-medium">Out of Stock</span>
+              <span class="h-7 w-7 rounded-full bg-rose-500/10 text-rose-700 flex items-center justify-center text-[11px]">O</span>
+            </div>
+            <div id="kpi-outofstock" class="text-2xl font-semibold text-rose-600">0</div>
+          </div>
+        </section>
+
+        <!-- ITEMS SECTION -->
+        <section id="section-items" class="space-y-4">
+          <div class="bg-white/90 rounded-2xl shadow-md border border-sky-100 p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-sm font-semibold text-sky-900">Item Master</h2>
+              <button id="btn-reset-item-form"
+                      class="text-[11px] text-sky-500 hover:text-sky-700 underline underline-offset-2">
+                Clear form
+              </button>
+            </div>
+            <!-- Item Master Form with Price -->
+            <form id="item-form" class="grid md:grid-cols-6 gap-3 text-xs">
+              <input type="hidden" id="item-id" />
+              <div class="md:col-span-2">
+                <label class="block font-medium text-sky-800 mb-1">Item Name</label>
+                <input id="item-name" type="text" required
+                       class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+              </div>
+              <div>
+                <label class="block font-medium text-sky-800 mb-1">Category</label>
+                <input id="item-category" type="text"
+                       class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+              </div>
+              <div>
+                <label class="block font-medium text-sky-800 mb-1">Opening Stock</label>
+                <input id="item-opening" type="number" min="0" step="0.01" value="0"
+                       class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+              </div>
+              <div>
+                <label class="block font-medium text-sky-800 mb-1">Unit</label>
+                <select id="item-unit"
+                        class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                  <option value="pcs">Pcs</option>
+                  <option value="kg">Kg</option>
+                  <option value="meter">Meter</option>
+                  <option value="box">Box</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-medium text-sky-800 mb-1">Price</label>
+                <input id="item-price" type="number" min="0" step="0.01" value="0"
+                       class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+              </div>
+              <div class="md:col-span-6 flex justify-end mt-1">
+                <button type="submit"
+                        class="px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-400 hover:to-indigo-400 text-white shadow-sm">
+                  Save Item
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="bg-white/90 rounded-2xl shadow-md border border-sky-100 p-5">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4 text-xs">
+              <div>
+                <h2 class="text-sm font-semibold text-sky-900">Items List</h2>
+                <p class="text-[11px] text-sky-500">Master view of all stock items</p>
+              </div>
+              <input id="item-search" type="text" placeholder="Search item…"
+                     class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-400 focus:border-sky-400">
+            </div>
+            <div class="overflow-x-auto rounded-2xl border border-sky-100 bg-sky-50/60">
+              <table class="min-w-full text-xs">
+                <thead>
+                <tr class="bg-sky-100 text-sky-700 border-b border-sky-200">
+                  <th class="px-3 py-2 text-left font-semibold">Item</th>
+                  <th class="px-3 py-2 text-left font-semibold">Category</th>
+                  <th class="px-3 py-2 text-right font-semibold">Price</th>
+                  <th class="px-3 py-2 text-right font-semibold">Stock</th>
+                  <th class="px-3 py-2 text-left font-semibold">Unit</th>
+                  <th class="px-3 py-2 text-left font-semibold">Last Updated</th>
+                  <th class="px-3 py-2 text-center font-semibold">Actions</th>
+                </tr>
+                </thead>
+                <tbody id="items-tbody" class="divide-y divide-sky-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- MOVEMENTS SECTION -->
+        <section id="section-movements" class="space-y-4 hidden">
+          <div class="bg-white/90 rounded-2xl shadow-md border border-amber-100 p-5">
+            <h2 class="text-sm font-semibold text-amber-800 mb-4">Stock Movements (IN / OUT)</h2>
+            <form id="movement-form" class="grid md:grid-cols-5 gap-3 text-xs">
+              <div class="md:col-span-2">
+                <label class="block font-medium text-sky-800 mb-1">Item</label>
+                <select id="movement-item" required
+                        class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                </select>
+              </div>
+              <div>
+                <label class="block font-medium text-sky-800 mb-1">Type</label>
+                <select id="movement-type" required
+                        class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                  <option value="in">IN (Purchase / Production)</option>
+                  <option value="out">OUT (Sale / Issue)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-medium text-sky-800 mb-1">Quantity</label>
+                <input id="movement-qty" type="number" min="0" step="0.01" required
+                       class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+              </div>
+              <div>
+                <label class="block font-medium text-sky-800 mb-1">Date</label>
+                <input id="movement-date" type="date" required
+                       class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+              </div>
+              <div class="md:col-span-5 flex justify-end mt-1">
+                <button type="submit"
+                        class="px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-sm">
+                  Save Movement
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="bg-white/90 rounded-2xl shadow-md border border-amber-100 p-5">
+            <div class="flex items-center justify-between mb-3 text-xs">
+              <h2 class="text-sm font-semibold text-amber-800">Recent Movements</h2>
+              <span class="text-[11px] text-amber-600">Last 50 entries</span>
+            </div>
+            <div class="overflow-x-auto rounded-2xl border border-sky-100 bg-sky-50/60">
+              <table class="min-w-full text-xs">
+                <thead>
+                <tr class="bg-amber-50 text-amber-800 border-b border-amber-100">
+                  <th class="px-3 py-2 text-left font-semibold">Date</th>
+                  <th class="px-3 py-2 text-left font-semibold">Item</th>
+                  <th class="px-3 py-2 text-left font-semibold">Type</th>
+                  <th class="px-3 py-2 text-right font-semibold">Qty</th>
+                </tr>
+                </thead>
+                <tbody id="movements-tbody" class="divide-y divide-sky-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- REPORTS SECTION -->
+        <section id="section-reports" class="space-y-4 hidden">
+          <div class="bg-white/90 rounded-2xl shadow-md border border-sky-100 p-5">
+            <h2 class="text-sm font-semibold text-sky-900 mb-3">Stock Reports</h2>
+            <div class="grid md:grid-cols-4 gap-3 items-end text-xs">
+              <div class="md:col-span-4">
+                <span class="block font-medium text-sky-800 mb-1">Report View</span>
+                <div class="flex gap-4 flex-wrap">
+                  <label class="flex items-center gap-2">
+                    <input type="radio" name="report-view" value="movement" checked class="accent-sky-600">
+                    <span>Movement (date wise)</span>
+                  </label>
+                  <label class="flex items-center gap-2">
+                    <input type="radio" name="report-view" value="stockwise" class="accent-sky-600">
+                    <span>Stock Wise (current)</span>
+                  </label>
+                  <label class="flex items-center gap-2">
+                    <input type="radio" name="report-view" value="sales" class="accent-sky-600">
+                    <span>Sales (OUT only)</span>
+                  </label>
+                  <!-- New Stock Value Report option -->
+                  <label class="flex items-center gap-2">
+                    <input type="radio" name="report-view" value="stockvalue" class="accent-sky-600">
+                    <span>Stock Value (₹)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="md:col-span-2 movement-controls">
+                <span class="block font-medium text-sky-800 mb-1">Movement Type</span>
+                <div class="flex gap-4">
+                  <label class="flex items-center gap-2">
+                    <input type="radio" name="report-type" value="daily" checked class="accent-sky-600">
+                    <span>Daily</span>
+                  </label>
+                  <label class="flex items-center gap-2">
+                    <input type="radio" name="report-type" value="monthly" class="accent-sky-600">
+                    <span>Monthly</span>
+                  </label>
+                </div>
+              </div>
+
+              <div id="daily-input-wrapper" class="movement-controls">
+                <label class="block font-medium text-sky-800 mb-1">Select Date</label>
+                <input id="report-date" type="date"
+                       class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+              </div>
+
+              <div id="monthly-input-wrapper" class="movement-controls hidden">
+                <label class="block font-medium text-sky-800 mb-1">Select Month</label>
+                <input id="report-month" type="month"
+                       class="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+              </div>
+
+              <div class="flex gap-2 justify-end md:col-span-4 mt-3">
+                <button id="btn-generate-report"
+                        class="px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 hover:from-sky-400 hover:via-indigo-400 hover:to-purple-400 text-white shadow-sm">
+                  Generate Report
+                </button>
+                <button id="btn-print-report"
+                        class="px-4 py-2 rounded-xl text-xs font-semibold border border-sky-200 bg-sky-50 hover:bg-white shadow-sm">
+                  Print Report
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="report-wrapper"
+               class="bg-white/90 rounded-2xl shadow-md border border-sky-100 p-5">
+            <h3 class="text-sm font-semibold text-sky-900 mb-1" id="report-title">
+              No report generated
+            </h3>
+            <p class="text-[11px] text-sky-500 mb-3" id="report-subtitle">
+              Choose options and click "Generate Report".
+            </p>
+
+            <div id="report-summary" class="grid md:grid-cols-4 gap-3 mb-4 text-xs"></div>
+
+            <div class="grid md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <h4 class="text-xs font-semibold text-sky-800 mb-2">Main Chart</h4>
+                <div class="bg-sky-50 border border-sky-100 rounded-2xl p-3" style="height:200px;">
+                  <canvas id="reportChartMain"></canvas>
+                </div>
+              </div>
+              <div>
+                <h4 class="text-xs font-semibold text-sky-800 mb-2">Share by Item / Category</h4>
+                <div class="bg-sky-50 border border-sky-100 rounded-2xl p-3" style="height:200px;">
+                  <canvas id="reportChartSecondary"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div id="report-body" class="text-xs text-slate-700"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  let items = [];
+  let movements = [];
+  let mainChart = null;
+  let secondaryChart = null;
+
+  const palette = [
+    "#0ea5e9","#22c55e","#f97316","#ec4899",
+    "#a855f7","#eab308","#38bdf8","#f97373",
+    "#14b8a6","#6366f1"
+  ];
+
+  function loadData() {
+    items = JSON.parse(localStorage.getItem("stockItems") || "[]");
+    movements = JSON.parse(localStorage.getItem("stockMovements") || "[]");
+  }
+  function saveData() {
+    localStorage.setItem("stockItems", JSON.stringify(items));
+    localStorage.setItem("stockMovements", JSON.stringify(movements));
+    updateKpis();
+  }
+  function formatDate(dateStr) {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return isNaN(d) ? dateStr : d.toLocaleDateString();
+  }
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+  function todayIso() {
+    return new Date().toISOString().slice(0,10);
+  }
+
+  function setActiveTab(tabId) {
+    const sections = {
+      "tab-items": "section-items",
+      "tab-movements": "section-movements",
+      "tab-reports": "section-reports"
+    };
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      if (btn.id === tabId) {
+        btn.classList.add("bg-sky-100","text-sky-900","shadow-sm");
+      } else {
+        btn.classList.remove("bg-sky-100","text-sky-900","shadow-sm");
+      }
+    });
+    Object.values(sections).forEach(id => {
+      document.getElementById(id).classList.add("hidden");
+    });
+    document.getElementById(sections[tabId]).classList.remove("hidden");
+  }
+
+  // ITEMS
+  function renderItemsTable() {
+    const tbody = document.getElementById("items-tbody");
+    const search = document.getElementById("item-search").value.toLowerCase().trim();
+    tbody.innerHTML = "";
+    let filtered = items;
+    if (search) {
+      filtered = items.filter(i =>
+        i.name.toLowerCase().includes(search) ||
+        (i.category || "").toLowerCase().includes(search)
+      );
+    }
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-3 text-center text-[11px] text-sky-500">No items found.</td></tr>';
+      updateKpis();
+      return;
+    }
+    filtered.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-sky-100/80";
+      tr.innerHTML = `
+        <td class="px-3 py-2">${item.name}</td>
+        <td class="px-3 py-2 text-sky-500">${item.category || "-"}</td>
+        <td class="px-3 py-2 text-right">${Number(item.price || 0).toFixed(2)}</td>
+        <td class="px-3 py-2 text-right">${Number(item.stock || 0).toFixed(2)}</td>
+        <td class="px-3 py-2 text-sky-500">${item.unit || ""}</td>
+        <td class="px-3 py-2 text-[11px] text-sky-500">${item.lastUpdated ? formatDate(item.lastUpdated) : "-"}</td>
+        <td class="px-3 py-2 text-center">
+          <button data-action="edit" data-id="${item.id}" class="text-[11px] text-sky-600 hover:underline mr-2">Edit</button>
+          <button data-action="delete" data-id="${item.id}" class="text-[11px] text-rose-500 hover:underline">Delete</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    updateKpis();
+  }
+  function clearItemForm() {
+    document.getElementById("item-id").value = "";
+    document.getElementById("item-name").value = "";
+    document.getElementById("item-category").value = "";
+    document.getElementById("item-opening").value = 0;
+    document.getElementById("item-unit").value = "pcs";
+    document.getElementById("item-price").value = 0;
+  }
+  function fillItemForm(item) {
+    document.getElementById("item-id").value = item.id;
+    document.getElementById("item-name").value = item.name;
+    document.getElementById("item-category").value = item.category || "";
+    document.getElementById("item-opening").value = item.stock || 0;
+    document.getElementById("item-unit").value = item.unit || "pcs";
+    document.getElementById("item-price").value = item.price != null ? item.price : 0;
+  }
+
+  // MOVEMENTS
+  function renderMovementSelect() {
+    const sel = document.getElementById("movement-item");
+    sel.innerHTML = "";
+    if (!items.length) {
+      sel.innerHTML = '<option value="">No items available</option>';
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    items.forEach(i => {
+      const opt = document.createElement("option");
+      opt.value = i.id;
+      opt.textContent = i.name;
+      sel.appendChild(opt);
+    });
+  }
+  function renderMovementsTable() {
+    const tbody = document.getElementById("movements-tbody");
+    tbody.innerHTML = "";
+    if (!movements.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-3 text-center text-[11px] text-sky-500">No movements yet.</td></tr>';
+      updateKpis();
+      return;
+    }
+    [...movements].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,50)
+      .forEach(m => {
+        const item = items.find(i=>i.id===m.itemId);
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-sky-100/80";
+        tr.innerHTML = `
+          <td class="px-3 py-2">${formatDate(m.date)}</td>
+          <td class="px-3 py-2">${item ? item.name : "-"}</td>
+          <td class="px-3 py-2">
+            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              m.type === "in" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"
+            }">${m.type.toUpperCase()}</span>
+          </td>
+          <td class="px-3 py-2 text-right">${Number(m.qty).toFixed(2)}</td>`;
+        tbody.appendChild(tr);
+      });
+    updateKpis();
+  }
+
+  // KPIs
+  function updateKpis() {
+    document.getElementById("kpi-items").textContent = items.length;
+    const totalStock = items.reduce((s,i)=>s+(Number(i.stock)||0),0);
+    document.getElementById("kpi-stock").textContent = totalStock.toFixed(2);
+    const today = todayIso();
+    document.getElementById("kpi-movements").textContent =
+      movements.filter(m=>m.date===today).length;
+    document.getElementById("kpi-outofstock").textContent =
+      items.filter(i=>(Number(i.stock)||0)<=0).length;
+  }
+
+  // REPORT SUMMARY CARDS
+  function renderReportSummary(cards) {
+    const c = document.getElementById("report-summary");
+    c.innerHTML = "";
+    cards.forEach(card=>{
+      const div = document.createElement("div");
+      div.className = `rounded-2xl border p-3 shadow-sm ${card.bg}`;
+      div.innerHTML = `
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-[11px] font-medium ${card.labelColor}">${card.label}</span>
+          <span class="h-6 w-6 rounded-full flex items-center justify-center text-[10px] ${card.iconBg}">${card.icon}</span>
+        </div>
+        <div class="text-lg font-semibold ${card.valueColor}">${card.value}</div>
+        <p class="text-[10px] ${card.noteColor} mt-0.5">${card.note}</p>`;
+      c.appendChild(div);
+    });
+  }
+
+  // REPORT GENERATION
+  function generateReport() {
+    const view = document.querySelector('input[name="report-view"]:checked').value;
+    const type = document.querySelector('input[name="report-type"]:checked').value;
+    const titleEl = document.getElementById("report-title");
+    const subtitleEl = document.getElementById("report-subtitle");
+    const bodyEl = document.getElementById("report-body");
+    const mainCtx = document.getElementById("reportChartMain").getContext("2d");
+    const secCtx = document.getElementById("reportChartSecondary").getContext("2d");
+    bodyEl.innerHTML = "";
+
+    if (mainChart) mainChart.destroy();
+    if (secondaryChart) secondaryChart.destroy();
+
+    // STOCKWISE (current stock)
+    if (view === "stockwise") {
+      titleEl.textContent = "Stock Wise Report - Current Stock";
+      subtitleEl.textContent = "Generated at " + new Date().toLocaleString();
+      if (!items.length) {
+        bodyEl.innerHTML = '<p class="text-[11px] text-sky-500">No items available.</p>';
+        renderReportSummary([]);
+        mainChart = new Chart(mainCtx,{type:"bar",data:{labels:[],datasets:[]},options:{}});
+        secondaryChart = new Chart(secCtx,{type:"doughnut",data:{labels:[],datasets:[]},options:{}});
+        return;
+      }
+
+      const labels = items.map(i=>i.name);
+      const stock = items.map(i=>Number(i.stock)||0);
+      const catTotals = {};
+      items.forEach(i=>{
+        const cat = i.category || "Uncategorized";
+        catTotals[cat] = (catTotals[cat]||0)+(Number(i.stock)||0);
+      });
+      const catLabels = Object.keys(catTotals);
+      const catValues = Object.values(catTotals);
+      const total = stock.reduce((a,b)=>a+b,0);
+      const maxVal = Math.max(...stock);
+      const topItem = items[stock.indexOf(maxVal)];
+      const zeroCount = items.filter(i=>(Number(i.stock)||0)<=0).length;
+
+      renderReportSummary([
+        {label:"Total Items",value:items.length, note:"Active SKUs.", bg:"bg-sky-50 border-sky-100",
+         labelColor:"text-sky-600", valueColor:"text-sky-800", noteColor:"text-sky-500",
+         icon:"P", iconBg:"bg-sky-500/10 text-sky-700"},
+        {label:"Total Stock",value:total.toFixed(2), note:"All items together.", bg:"bg-emerald-50 border-emerald-100",
+         labelColor:"text-emerald-600", valueColor:"text-emerald-700", noteColor:"text-emerald-500",
+         icon:"Σ", iconBg:"bg-emerald-500/10 text-emerald-700"},
+        {label:"Top Item",value:topItem?topItem.name:"-", note:`${maxVal.toFixed(2)} ${topItem?topItem.unit:""}`, bg:"bg-amber-50 border-amber-100",
+         labelColor:"text-amber-600", valueColor:"text-amber-700", noteColor:"text-amber-600",
+         icon:"★", iconBg:"bg-amber-500/10 text-amber-700"},
+        {label:"Out of Stock",value:zeroCount, note:"Zero or negative stock.", bg:"bg-rose-50 border-rose-100",
+         labelColor:"text-rose-600", valueColor:"text-rose-700", noteColor:"text-rose-500",
+         icon:"!", iconBg:"bg-rose-500/10 text-rose-700"},
+      ]);
+
+      mainChart = new Chart(mainCtx,{
+        type:"bar",
+        data:{labels,datasets:[{label:"Current Stock",data:stock,backgroundColor:labels.map((_,i)=>palette[i%palette.length])}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}
+      });
+      secondaryChart = new Chart(secCtx,{
+        type:"doughnut",
+        data:{labels:catLabels,datasets:[{data:catValues,backgroundColor:catLabels.map((_,i)=>palette[i%palette.length])}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}}}
+      });
+
+      const tbl = document.createElement("table");
+      tbl.className = "min-w-full text-[11px] mb-4 border border-sky-100 rounded-xl overflow-hidden";
+      tbl.innerHTML = `
+        <thead class="bg-sky-100 text-sky-700">
+          <tr>
+            <th class="px-2 py-1 text-left">Item</th>
+            <th class="px-2 py-1 text-left">Category</th>
+            <th class="px-2 py-1 text-right">Stock</th>
+            <th class="px-2 py-1 text-left">Unit</th>
+            <th class="px-2 py-1 text-left">Last Updated</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-sky-100 bg-sky-50"></tbody>`;
+      const tb = tbl.querySelector("tbody");
+      items.slice().sort((a,b)=>(Number(b.stock)||0)-(Number(a.stock)||0)).forEach(i=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="px-2 py-1">${i.name}</td>
+          <td class="px-2 py-1 text-sky-500">${i.category||"-"}</td>
+          <td class="px-2 py-1 text-right">${(Number(i.stock)||0).toFixed(2)}</td>
+          <td class="px-2 py-1 text-sky-500">${i.unit||""}</td>
+          <td class="px-2 py-1 text-[11px] text-sky-500">${i.lastUpdated?formatDate(i.lastUpdated):"-"}</td>`;
+        tb.appendChild(tr);
+      });
+      bodyEl.appendChild(tbl);
+      return;
+    }
+
+    // STOCK VALUE DETAILED REPORT
+    if (view === "stockvalue") {
+      titleEl.textContent = "Stock Value Detailed Report";
+      subtitleEl.textContent = "Generated at " + new Date().toLocaleString();
+      bodyEl.innerHTML = "";
+
+      if (!items.length) {
+        bodyEl.innerHTML = '<p class="text-[11px] text-sky-500">No items available.</p>';
+        renderReportSummary([]);
+        return;
+      }
+
+      let totalStockValue = 0;
+      const labels = [];
+      const valueData = [];
+      const categoryMap = {};
+
+      items.forEach(i => {
+        const stock = Number(i.stock) || 0;
+        const price = Number(i.price) || 0;
+        const value = stock * price;
+
+        totalStockValue += value;
+        labels.push(i.name);
+        valueData.push(value);
+
+        const cat = i.category || "Uncategorized";
+        categoryMap[cat] = (categoryMap[cat] || 0) + value;
+      });
+
+      const catLabels = Object.keys(categoryMap);
+      const catValues = Object.values(categoryMap);
+      const maxVal = Math.max(...valueData);
+      const topItem = items[valueData.indexOf(maxVal)];
+
+      renderReportSummary([
+        {
+          label: "Total Stock Value",
+          value: "₹ " + totalStockValue.toFixed(2),
+          note: "Inventory worth",
+          bg: "bg-emerald-50 border-emerald-100",
+          labelColor: "text-emerald-600",
+          valueColor: "text-emerald-700",
+          noteColor: "text-emerald-500",
+          icon: "₹",
+          iconBg: "bg-emerald-500/10 text-emerald-700"
+        },
+        {
+          label: "Total Items",
+          value: items.length,
+          note: "Active products",
+          bg: "bg-sky-50 border-sky-100",
+          labelColor: "text-sky-600",
+          valueColor: "text-sky-800",
+          noteColor: "text-sky-500",
+          icon: "P",
+          iconBg: "bg-sky-500/10 text-sky-700"
+        },
+        {
+          label: "Top Value Item",
+          value: topItem ? topItem.name : "-",
+          note: "₹ " + (isFinite(maxVal) ? maxVal.toFixed(2) : "0.00"),
+          bg: "bg-amber-50 border-amber-100",
+          labelColor: "text-amber-600",
+          valueColor: "text-amber-700",
+          noteColor: "text-amber-600",
+          icon: "★",
+          iconBg: "bg-amber-500/10 text-amber-700"
+        }
+      ]);
+
+      mainChart = new Chart(mainCtx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Stock Value (₹)",
+            data: valueData,
+            backgroundColor: labels.map((_, i) => palette[i % palette.length])
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom" } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      secondaryChart = new Chart(secCtx, {
+        type: "doughnut",
+        data: {
+          labels: catLabels,
+          datasets: [{
+            data: catValues,
+            backgroundColor: catLabels.map((_, i) => palette[i % palette.length])
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom" } }
+        }
+      });
+
+      const tbl = document.createElement("table");
+      tbl.className = "min-w-full text-[11px] mb-4 border border-sky-100 rounded-xl overflow-hidden";
+      tbl.innerHTML = `
+        <thead class="bg-sky-100 text-sky-700">
+          <tr>
+            <th class="px-2 py-1 text-left">Item</th>
+            <th class="px-2 py-1 text-right">Stock</th>
+            <th class="px-2 py-1 text-right">Price</th>
+            <th class="px-2 py-1 text-right">Stock Value (₹)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-sky-100 bg-sky-50"></tbody>
+      `;
+
+      const tb = tbl.querySelector("tbody");
+      items.forEach(i => {
+        const stock = Number(i.stock) || 0;
+        const price = Number(i.price) || 0;
+        const value = stock * price;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="px-2 py-1">${i.name}</td>
+          <td class="px-2 py-1 text-right">${stock.toFixed(2)}</td>
+          <td class="px-2 py-1 text-right">₹ ${price.toFixed(2)}</td>
+          <td class="px-2 py-1 text-right font-semibold">₹ ${value.toFixed(2)}</td>
+        `;
+        tb.appendChild(tr);
+      });
+
+      bodyEl.appendChild(tbl);
+      return;
+    }
+
+    // date filter for movement / sales reports
+    let filtered = [];
+    let label;
+    if (type === "daily") {
+      const d = document.getElementById("report-date").value;
+      if (!d) { alert("Select date"); return; }
+      filtered = movements.filter(m=>m.date===d);
+      label = (view==="sales"?"Daily Sales Report - ":"Daily Stock Report - ")+formatDate(d);
+    } else {
+      const m = document.getElementById("report-month").value;
+      if (!m) { alert("Select month"); return; }
+      filtered = movements.filter(x=>(x.date||"").slice(0,7)===m);
+      const [y,mm]=m.split("-");
+      label = (view==="sales"?"Monthly Sales Report - ":"Monthly Stock Report - ")+mm+"/"+y;
+    }
+    if (view==="sales") filtered = filtered.filter(m=>m.type==="out");
+
+    titleEl.textContent = label;
+    subtitleEl.textContent = "Generated at " + new Date().toLocaleString();
+
+    if (!filtered.length) {
+      bodyEl.innerHTML = '<p class="text-[11px] text-sky-500">No data found for this period.</p>';
+      renderReportSummary([]);
+      mainChart = new Chart(mainCtx,{type:"bar",data:{labels:[],datasets:[]},options:{}});
+      secondaryChart = new Chart(secCtx,{type:"doughnut",data:{labels:[],datasets:[]},options:{}});
+      return;
+    }
+
+    // MOVEMENT VIEW
+    if (view === "movement") {
+      const map = {};
+      filtered.forEach(m=>{
+        if (!map[m.itemId]) map[m.itemId]={in:0,out:0};
+        if (m.type==="in") map[m.itemId].in+=Number(m.qty);
+        else map[m.itemId].out+=Number(m.qty);
+      });
+      const labels = [];
+      const inData=[]; const outData=[]; const netData=[]; const volData=[];
+      Object.keys(map).forEach(id=>{
+        const item = items.find(i=>i.id===id);
+        const name = item?item.name:"Item";
+        const d = map[id];
+        labels.push(name);
+        inData.push(d.in); outData.push(d.out); netData.push(d.in-d.out); volData.push(d.in+d.out);
+      });
+      const totalIn = inData.reduce((a,b)=>a+b,0);
+      const totalOut = outData.reduce((a,b)=>a+b,0);
+      const net = totalIn-totalOut;
+      const lines = filtered.length;
+
+      renderReportSummary([
+        {label:"Total IN",value:totalIn.toFixed(2),note:"Added in this period.",bg:"bg-emerald-50 border-emerald-100",
+         labelColor:"text-emerald-600",valueColor:"text-emerald-700",noteColor:"text-emerald-500",icon:"IN",iconBg:"bg-emerald-500/10 text-emerald-700"},
+        {label:"Total OUT",value:totalOut.toFixed(2),note:"Issued / sold.",bg:"bg-rose-50 border-rose-100",
+         labelColor:"text-rose-600",valueColor:"text-rose-700",noteColor:"text-rose-500",icon:"OUT",iconBg:"bg-rose-500/10 text-rose-700"},
+        {label:"Net Movement",value:net.toFixed(2),note:net>=0?"Net increase":"Net decrease",bg:"bg-indigo-50 border-indigo-100",
+         labelColor:"text-indigo-600",valueColor:"text-indigo-700",noteColor:"text-indigo-500",icon:"Σ",iconBg:"bg-indigo-500/10 text-indigo-700"},
+        {label:"Lines Posted",value:lines,note:`Across ${labels.length} item(s).`,bg:"bg-amber-50 border-amber-100",
+         labelColor:"text-amber-600",valueColor:"text-amber-700",noteColor:"text-amber-600",icon:"#",iconBg:"bg-amber-500/10 text-amber-700"},
+      ]);
+
+      mainChart = new Chart(mainCtx,{
+        type:"bar",
+        data:{
+          labels,
+          datasets:[
+            {label:"Total IN",data:inData,backgroundColor:labels.map((_,i)=>palette[i%palette.length])},
+            {label:"Total OUT",data:outData,backgroundColor:labels.map((_,i)=>palette[(i+3)%palette.length])},
+            {label:"Net Movement",data:netData,type:"line",borderColor:"#22c55e",backgroundColor:"rgba(34,197,94,0.15)",borderWidth:2,tension:0.3}
+          ]
+        },
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}
+      });
+      secondaryChart = new Chart(secCtx,{
+        type:"doughnut",
+        data:{labels,datasets:[{data:volData,backgroundColor:labels.map((_,i)=>palette[i%palette.length])}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}}}
+      });
+
+      const sumTbl = document.createElement("table");
+      sumTbl.className="min-w-full text-[11px] mb-4 border border-sky-100 rounded-xl overflow-hidden";
+      sumTbl.innerHTML = `
+        <thead class="bg-sky-100 text-sky-700">
+          <tr>
+            <th class="px-2 py-1 text-left">Item</th>
+            <th class="px-2 py-1 text-right">Total IN</th>
+            <th class="px-2 py-1 text-right">Total OUT</th>
+            <th class="px-2 py-1 text-right">Net</th>
+            <th class="px-2 py-1 text-right">Current Stock</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-sky-100 bg-sky-50"></tbody>`;
+      const sb=sumTbl.querySelector("tbody");
+      Object.keys(map).forEach(id=>{
+        const item = items.find(i=>i.id===id);
+        const d = map[id];
+        const tr=document.createElement("tr");
+        tr.innerHTML=`
+          <td class="px-2 py-1">${item?item.name:"-"}</td>
+          <td class="px-2 py-1 text-right">${d.in.toFixed(2)}</td>
+          <td class="px-2 py-1 text-right">${d.out.toFixed(2)}</td>
+          <td class="px-2 py-1 text-right">${(d.in-d.out).toFixed(2)}</td>
+          <td class="px-2 py-1 text-right">${item?Number(item.stock||0).toFixed(2):"-"}</td>`;
+        sb.appendChild(tr);
+      });
+
+      const detailTitle=document.createElement("h4");
+      detailTitle.className="text-xs font-semibold text-sky-800 mt-3 mb-1";
+      detailTitle.textContent="Detailed Movements";
+
+      const detailTbl=document.createElement("table");
+      detailTbl.className="min-w-full text-[11px] border border-sky-100 rounded-xl overflow-hidden";
+      detailTbl.innerHTML=`
+        <thead class="bg-sky-100 text-sky-700">
+          <tr>
+            <th class="px-2 py-1 text-left">Date</th>
+            <th class="px-2 py-1 text-left">Item</th>
+            <th class="px-2 py-1 text-left">Type</th>
+            <th class="px-2 py-1 text-right">Qty</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-sky-100 bg-sky-50"></tbody>`;
+      const db=detailTbl.querySelector("tbody");
+      filtered.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(m=>{
+        const item = items.find(i=>i.id===m.itemId);
+        const tr=document.createElement("tr");
+        tr.innerHTML=`
+          <td class="px-2 py-1">${formatDate(m.date)}</td>
+          <td class="px-2 py-1">${item?item.name:"-"}</td>
+          <td class="px-2 py-1">${m.type.toUpperCase()}</td>
+          <td class="px-2 py-1 text-right">${Number(m.qty).toFixed(2)}</td>`;
+        db.appendChild(tr);
+      });
+
+      bodyEl.appendChild(sumTbl);
+      bodyEl.appendChild(detailTitle);
+      bodyEl.appendChild(detailTbl);
+      return;
+    }
+
+    // SALES VIEW
+    const salesMap = {};
+    filtered.forEach(m=>{
+      if(!salesMap[m.itemId]) salesMap[m.itemId]={qty:0,lines:0,last:null};
+      const s=salesMap[m.itemId];
+      s.qty+=Number(m.qty); s.lines++; if(!s.last || new Date(m.date)>new Date(s.last)) s.last=m.date;
+    });
+    const labels = []; const qtyData=[];
+    Object.keys(salesMap).forEach(id=>{
+      const item = items.find(i=>i.id===id);
+      labels.push(item?item.name:"Item");
+      qtyData.push(salesMap[id].qty);
+    });
+    const totalQty=qtyData.reduce((a,b)=>a+b,0);
+    const totalLines=filtered.length;
+    const avg=totalLines?totalQty/totalLines:0;
+    const topQty=Math.max(...qtyData);
+    const topItem=items[qtyData.indexOf(topQty)];
+
+    renderReportSummary([
+      {label:"Total Qty Sold",value:totalQty.toFixed(2),note:"Units issued (OUT).",bg:"bg-emerald-50 border-emerald-100",
+       labelColor:"text-emerald-600",valueColor:"text-emerald-700",noteColor:"text-emerald-500",icon:"Q",iconBg:"bg-emerald-500/10 text-emerald-700"},
+      {label:"Sales Lines",value:totalLines,note:"Number of OUT lines.",bg:"bg-sky-50 border-sky-100",
+       labelColor:"text-sky-600",valueColor:"text-sky-800",noteColor:"text-sky-500",icon:"#",iconBg:"bg-sky-500/10 text-sky-700"},
+      {label:"Top Item (Qty)",value:topItem?topItem.name:"-",note:`${topQty.toFixed(2)} ${topItem?topItem.unit:""}`,bg:"bg-amber-50 border-amber-100",
+       labelColor:"text-amber-600",valueColor:"text-amber-700",noteColor:"text-amber-600",icon:"★",iconBg:"bg-amber-500/10 text-amber-700"},
+      {label:"Avg Qty / Line",value:avg.toFixed(2),note:"Per sales line.",bg:"bg-indigo-50 border-indigo-100",
+       labelColor:"text-indigo-600",valueColor:"text-indigo-700",noteColor:"text-indigo-500",icon:"Ø",iconBg:"bg-indigo-500/10 text-indigo-700"},
+    ]);
+
+    mainChart = new Chart(mainCtx,{
+      type:"bar",
+      data:{labels,datasets:[{label:"Qty Sold",data:qtyData,backgroundColor:labels.map((_,i)=>palette[i%palette.length])}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}
+    });
+    secondaryChart = new Chart(secCtx,{
+      type:"doughnut",
+      data:{labels,datasets:[{data:qtyData,backgroundColor:labels.map((_,i)=>palette[i%palette.length])}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}}}
+    });
+
+    const sumTbl=document.createElement("table");
+    sumTbl.className="min-w-full text-[11px] mb-4 border border-sky-100 rounded-xl overflow-hidden";
+    sumTbl.innerHTML=`
+      <thead class="bg-sky-100 text-sky-700">
+        <tr>
+          <th class="px-2 py-1 text-left">Item</th>
+          <th class="px-2 py-1 text-right">Qty Sold</th>
+          <th class="px-2 py-1 text-right">Lines</th>
+          <th class="px-2 py-1 text-right">Avg/Line</th>
+          <th class="px-2 py-1 text-left">Last Sale</th>
+          <th class="px-2 py-1 text-right">Current Stock</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-sky-100 bg-sky-50"></tbody>`;
+    const sb=sumTbl.querySelector("tbody");
+    Object.keys(salesMap).forEach(id=>{
+      const item = items.find(i=>i.id===id);
+      const d=salesMap[id];
+      const avgPer=d.lines?d.qty/d.lines:0;
+      const tr=document.createElement("tr");
+      tr.innerHTML=`
+        <td class="px-2 py-1">${item?item.name:"-"}</td>
+        <td class="px-2 py-1 text-right">${d.qty.toFixed(2)}</td>
+        <td class="px-2 py-1 text-right">${d.lines}</td>
+        <td class="px-2 py-1 text-right">${avgPer.toFixed(2)}</td>
+        <td class="px-2 py-1 text-[11px] text-sky-500">${d.last?formatDate(d.last):"-"}</td>
+        <td class="px-2 py-1 text-right">${item?Number(item.stock||0).toFixed(2):"-"}</td>`;
+      sb.appendChild(tr);
+    });
+
+    const detailTitle=document.createElement("h4");
+    detailTitle.className="text-xs font-semibold text-sky-800 mt-3 mb-1";
+    detailTitle.textContent="Detailed Sales Lines";
+
+    const detailTbl=document.createElement("table");
+    detailTbl.className="min-w-full text-[11px] border border-sky-100 rounded-xl overflow-hidden";
+    detailTbl.innerHTML=`
+      <thead class="bg-sky-100 text-sky-700">
+        <tr>
+          <th class="px-2 py-1 text-left">Date</th>
+          <th class="px-2 py-1 text-left">Item</th>
+          <th class="px-2 py-1 text-right">Qty Sold</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-sky-100 bg-sky-50"></tbody>`;
+    const db=detailTbl.querySelector("tbody");
+    filtered.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(m=>{
+      const item = items.find(i=>i.id===m.itemId);
+      const tr=document.createElement("tr");
+      tr.innerHTML=`
+        <td class="px-2 py-1">${formatDate(m.date)}</td>
+        <td class="px-2 py-1">${item?item.name:"-"}</td>
+        <td class="px-2 py-1 text-right">${Number(m.qty).toFixed(2)}</td>`;
+      db.appendChild(tr);
+    });
+
+    bodyEl.appendChild(sumTbl);
+    bodyEl.appendChild(detailTitle);
+    bodyEl.appendChild(detailTbl);
+  }
+
+  // PRINT REPORT
+  function printReport() {
+    window.print();
+  }
+
+  // EVENTS & INIT
+  function setupEvents() {
+    document.getElementById("tab-items").onclick=()=>setActiveTab("tab-items");
+    document.getElementById("tab-movements").onclick=()=>setActiveTab("tab-movements");
+    document.getElementById("tab-reports").onclick=()=>setActiveTab("tab-reports");
+
+    document.getElementById("item-search").addEventListener("input",renderItemsTable);
+    document.getElementById("btn-reset-item-form").onclick=e=>{e.preventDefault();clearItemForm();};
+
+    document.getElementById("item-form").addEventListener("submit",e=>{
+      e.preventDefault();
+      const id=document.getElementById("item-id").value;
+      const name=document.getElementById("item-name").value.trim();
+      if(!name){alert("Item name required");return;}
+      const category=document.getElementById("item-category").value.trim();
+      const opening=parseFloat(document.getElementById("item-opening").value)||0;
+      const unit=document.getElementById("item-unit").value;
+      const price=parseFloat(document.getElementById("item-price").value)||0;
+      if(id){
+        const it=items.find(i=>i.id===id);
+        if(it){
+          it.name=name;
+          it.category=category;
+          it.unit=unit;
+          it.stock=opening;
+          it.price=price;
+          it.lastUpdated=todayIso();
+        }
+      }else{
+        items.push({id:generateId(),name,category,unit,stock:opening,price,lastUpdated:todayIso()});
+      }
+      saveData();
+      renderItemsTable();
+      renderMovementSelect();
+      clearItemForm();
+    });
+
+    document.getElementById("items-tbody").addEventListener("click",e=>{
+      const btn=e.target;
+      if(btn.dataset.action==="edit"){
+        const it=items.find(i=>i.id===btn.dataset.id);
+        if(it) fillItemForm(it);
+      }else if(btn.dataset.action==="delete"){
+        if(confirm("Delete this item? Movements will stay.")){
+          items=items.filter(i=>i.id!==btn.dataset.id);
+          saveData();renderItemsTable();renderMovementSelect();
+        }
+      }
+    });
+
+    document.getElementById("movement-form").addEventListener("submit",e=>{
+      e.preventDefault();
+      const itemId=document.getElementById("movement-item").value;
+      const type=document.getElementById("movement-type").value;
+      const qty=parseFloat(document.getElementById("movement-qty").value)||0;
+      const date=document.getElementById("movement-date").value;
+      if(!itemId||!date||qty<=0){alert("Fill all movement fields");return;}
+      const item=items.find(i=>i.id===itemId); if(!item){alert("Item not found");return;}
+      if(type==="in"){item.stock=(Number(item.stock)||0)+qty;}
+      else{
+        const ns=(Number(item.stock)||0)-qty;
+        if(ns<0 && !confirm("Stock becomes negative. Continue?")) return;
+        item.stock=ns;
+      }
+      item.lastUpdated=date;
+      movements.push({id:generateId(),itemId,type,qty,date});
+      document.getElementById("movement-qty").value="";
+      document.getElementById("movement-date").value="";
+      saveData();renderItemsTable();renderMovementsTable();
+    });
+
+    document.querySelectorAll('input[name="report-type"]').forEach(r=>{
+      r.addEventListener("change",()=>{
+        const t=document.querySelector('input[name="report-type"]:checked').value;
+        document.getElementById("daily-input-wrapper").classList.toggle("hidden",t!=="daily");
+        document.getElementById("monthly-input-wrapper").classList.toggle("hidden",t!=="monthly");
+      });
+    });
+
+    document.querySelectorAll('input[name="report-view"]').forEach(r=>{
+      r.addEventListener("change",()=>{
+        const v=document.querySelector('input[name="report-view"]:checked').value;
+        document.querySelectorAll(".movement-controls").forEach(el=>{
+          if(v==="stockwise" || v==="stockvalue") el.classList.add("opacity-40","pointer-events-none");
+          else el.classList.remove("opacity-40","pointer-events-none");
+        });
+      });
+    });
+
+    document.getElementById("btn-generate-report").onclick=generateReport;
+    document.getElementById("btn-print-report").onclick=printReport;
+  }
+
+  (function init(){
+    loadData();
+    setupEvents();
+    renderItemsTable();
+    renderMovementSelect();
+    renderMovementsTable();
+    setActiveTab("tab-items");
+    document.getElementById("today-label").textContent=new Date().toLocaleDateString();
+  })();
+</script>
+</body>
+</html>
